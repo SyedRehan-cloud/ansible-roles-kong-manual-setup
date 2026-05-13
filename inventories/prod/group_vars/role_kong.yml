@@ -1,0 +1,11 @@
+---
+kong_mode: postgres
+
+kong_pg_host: 10.0.2.10
+
+backend_host: 10.0.5.20
+
+kong_cluster:
+  - 10.0.1.10
+  - 10.0.1.11
+  - 10.0.1.12

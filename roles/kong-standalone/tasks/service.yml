@@ -1,0 +1,20 @@
+---
+- name: Run Kong migrations
+  command: kong migrations bootstrap -c /etc/kong/kong.conf
+  when: kong_mode == "postgres"
+  ignore_errors: true
+
+- name: Start Kong
+  command: kong start -c /etc/kong/kong.conf
+  ignore_errors: true
+
+- name: Enable Kong service
+  systemd:
+    name: kong
+    enabled: yes
+    state: started
+
+- name: Verify Kong Admin API
+  uri:
+    url: http://127.0.0.1:8001
+    status_code: 200

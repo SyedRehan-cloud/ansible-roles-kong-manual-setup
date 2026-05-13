@@ -1,0 +1,27 @@
+---
+- name: Create Kong config directory
+  file:
+    path: /etc/kong
+    state: directory
+
+- name: Deploy kong.conf
+  template:
+    src: kong.conf.j2
+    dest: /etc/kong/kong.conf
+  notify: restart kong
+
+- name: Deploy kong.yml
+  template:
+    src: kong.yml.j2
+    dest: /etc/kong/kong.yml
+  when: kong_mode == "dbless"
+  notify: reload kong
+
+- name: Deploy systemd service
+  template:
+    src: kong.service.j2
+    dest: /etc/systemd/system/kong.service
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes

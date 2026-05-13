@@ -1,0 +1,9 @@
+---
+- name: Deploy Kong HA Cluster
+  hosts: aws_ec2
+  become: yes
+  serial: 1
+  strategy: free
+
+  roles:
+    - kong-standalone

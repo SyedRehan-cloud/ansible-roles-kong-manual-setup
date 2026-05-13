@@ -1,0 +1,14 @@
+database = {{ 'off' if kong_mode == 'dbless' else 'postgres' }}
+
+{% if kong_mode == 'postgres' %}
+pg_host = {{ kong_pg_host }}
+pg_port = {{ kong_pg_port }}
+pg_database = {{ kong_pg_database }}
+pg_user = {{ kong_pg_user }}
+pg_password = {{ kong_pg_password }}
+{% else %}
+declarative_config = /etc/kong/kong.yml
+{% endif %}
+
+proxy_listen = {{ kong_proxy_listen }}
+admin_listen = {{ kong_admin_listen }}

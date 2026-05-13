@@ -1,0 +1,13 @@
+---
+- name: Download Kong package
+  get_url:
+    url: "https://packages.konghq.com/public/gateway-39/deb/ubuntu/pool/noble/main/k/ko/kong_{{ kong_version }}/kong_{{ kong_version }}_amd64.deb"
+    dest: /tmp/kong.deb
+
+- name: Install Kong package
+  apt:
+    deb: /tmp/kong.deb
+  ignore_errors: true
+
+- name: Hold Kong package version
+  command: apt-mark hold kong

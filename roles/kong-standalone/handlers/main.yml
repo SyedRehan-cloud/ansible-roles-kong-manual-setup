@@ -1,0 +1,6 @@
+---
+- name: restart kong
+  command: kong restart -c /etc/kong/kong.conf
+
+- name: reload kong
+  command: kong reload -c /etc/kong/kong.conf
