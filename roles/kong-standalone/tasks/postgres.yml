@@ -7,11 +7,52 @@
     state: present
     update_cache: yes
 
-- name: Start PostgreSQL
+- name: Start PostgreSQL service
   service:
     name: postgresql
     state: started
     enabled: yes
+
+# -------------------------------
+# WAIT FOR POSTGRESQL
+# -------------------------------
+
+- name: Wait for PostgreSQL TCP port
+  wait_for:
+    host: 127.0.0.1
+    port: 5432
+    timeout: 120
+
+- name: Wait for PostgreSQL fully ready
+  shell: pg_isready -h 127.0.0.1 -p 5432
+  register: pg_ready
+  retries: 30
+  delay: 3
+  until: pg_ready.rc == 0
+  changed_when: false
+
+# -------------------------------
+# FIND POSTGRES CONFIG
+# -------------------------------
+
+- name: Find PostgreSQL config
+  find:
+    paths: /etc/postgresql
+    patterns: postgresql.conf
+    recurse: yes
+  register: pg_conf
+
+- name: Ensure PostgreSQL listens on IPv4 only
+  lineinfile:
+    path: "{{ pg_conf.files[0].path }}"
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = '127.0.0.1'"
+  notify: restart postgresql
+  when: pg_conf.matched > 0
+
+# -------------------------------
+# CREATE USER
+# -------------------------------
 
 - name: Create Kong DB user
   shell: |
@@ -19,6 +60,10 @@
     sudo -u postgres psql -c "CREATE USER {{ kong_pg_user }} WITH PASSWORD '{{ kong_pg_password }}';"
   args:
     executable: /bin/bash
+
+# -------------------------------
+# CREATE DATABASE
+# -------------------------------
 
 - name: Create Kong database
   shell: |

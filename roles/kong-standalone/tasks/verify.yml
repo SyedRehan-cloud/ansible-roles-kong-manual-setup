@@ -1,0 +1,11 @@
+---
+- name: Wait for Kong Admin API to be ready
+  uri:
+    url: http://127.0.0.1:8001
+    method: GET
+    status_code: 200
+    timeout: 5
+  register: kong_api
+  retries: 30
+  delay: 5
+  until: kong_api.status == 200

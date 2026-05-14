@@ -1,20 +1,83 @@
 ---
-- name: Run Kong migrations
-  command: kong migrations bootstrap -c /etc/kong/kong.conf
-  when: kong_mode == "postgres"
-  ignore_errors: true
+- name: Validate Kong config
+  command: kong check /etc/kong/kong.conf
+  changed_when: false
 
-- name: Start Kong
-  command: kong start -c /etc/kong/kong.conf
-  ignore_errors: true
+# -------------------------------
+# STOP KONG SAFELY
+# -------------------------------
 
-- name: Enable Kong service
+- name: Stop Kong safely
   systemd:
     name: kong
-    enabled: yes
-    state: started
+    state: stopped
+  ignore_errors: yes
 
-- name: Verify Kong Admin API
-  uri:
-    url: http://127.0.0.1:8001
-    status_code: 200
+# -------------------------------
+# WAIT FOR DB CONNECTION
+# -------------------------------
+
+- name: Wait for PostgreSQL stable connection
+  shell: |
+    PGPASSWORD={{ kong_pg_password }} psql \
+    -h 127.0.0.1 \
+    -U {{ kong_pg_user }} \
+    -d postgres \
+    -c "SELECT 1;"
+  register: db_ping
+  retries: 20
+  delay: 3
+  until: db_ping.rc == 0
+  changed_when: false
+  when: kong_mode == "postgres"
+
+# -------------------------------
+# CHECK SCHEMA
+# -------------------------------
+
+- name: Check if Kong schema exists
+  shell: sudo -u postgres psql -d {{ kong_pg_database }} -c "\dt"
+  register: schema_check
+  failed_when: false
+  changed_when: false
+  when: kong_mode == "postgres"
+
+# -------------------------------
+# BOOTSTRAP ONLY FIRST TIME
+# -------------------------------
+
+- name: Run migrations bootstrap
+  command: kong migrations bootstrap -c /etc/kong/kong.conf
+  when:
+    - kong_mode == "postgres"
+    - "'kong' not in schema_check.stdout"
+  register: bootstrap
+  retries: 10
+  delay: 5
+  until: bootstrap.rc == 0
+
+# -------------------------------
+# NORMAL MIGRATIONS
+# -------------------------------
+
+- name: Run migrations up
+  command: kong migrations up -c /etc/kong/kong.conf
+  register: mig_up
+  retries: 10
+  delay: 5
+  until: mig_up.rc == 0
+  when: kong_mode == "postgres"
+
+- name: Run migrations finish
+  command: kong migrations finish -c /etc/kong/kong.conf
+  when: kong_mode == "postgres"
+
+# -------------------------------
+# START KONG
+# -------------------------------
+
+- name: Start Kong
+  systemd:
+    name: kong
+    state: started
+    enabled: yes
